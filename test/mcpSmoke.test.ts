@@ -1,6 +1,7 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
+import { startHttpServer } from "../src/server/http.js";
 import { createMcpServer } from "../src/server/mcpServer.js";
 import { moduleListFixture } from "./fixtures.js";
 
@@ -45,5 +46,29 @@ describe("MCP server", () => {
 
     await client.close();
     await server.close();
+  });
+
+  it("serves a health endpoint for load balancers", async () => {
+    const httpServer = await startHttpServer({ port: 0, host: "127.0.0.1" });
+    const address = httpServer.address();
+    if (!address || typeof address === "string") {
+      throw new Error("Expected HTTP server to listen on an ephemeral TCP port.");
+    }
+
+    const response = await fetch(`http://127.0.0.1:${address.port}/health`);
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+
+    await new Promise<void>((resolve, reject) => {
+      httpServer.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
   });
 });

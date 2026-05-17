@@ -15,6 +15,12 @@ export async function startHttpServer(options: HttpServerOptions): Promise<http.
   const server = http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "localhost"}`);
+      if (url.pathname === "/health") {
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ ok: true }));
+        return;
+      }
+
       if (url.pathname !== "/mcp") {
         response.writeHead(404).end("Not found");
         return;
